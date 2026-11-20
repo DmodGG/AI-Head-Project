@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Robot Head Animation Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0c1014; --panel:#141a20; --line:#232c35; --text:#e6edf3; --dim:#8b98a5;
+    --accent:#22d3ee; --accent-soft:rgba(34,211,238,.14);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);font-family:"Space Grotesk",system-ui,sans-serif}
+  .wrap{max-width:980px;margin:0 auto;padding:16px 14px 40px;display:grid;gap:14px;grid-template-columns:1fr}
+  @media(min-width:860px){.wrap{grid-template-columns:420px 1fr;align-items:start}.stage{position:sticky;top:12px}}
+  header{grid-column:1/-1;display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  h1{font-size:20px;margin:0;letter-spacing:.02em}
+  h1 span{color:var(--accent)}
+  .sub{color:var(--dim);font-size:13px}
+  .stage{background:radial-gradient(120% 90% at 50% 20%,#1a232c 0%,#0c1014 70%);border:1px solid var(--line);border-radius:18px;padding:10px 10px 6px}
+  #face{width:100%;max-width:400px;display:block;margin:0 auto;touch-action:auto}
+  #face.follow{touch-action:none;cursor:crosshair}
+  .status{display:flex;justify-content:space-between;font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--dim);padding:2px 6px 6px}
+  .status b{color:var(--accent);font-weight:600}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
+  .card h2{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--dim);margin:0 0 10px;font-weight:500}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+  button,.chip{font:inherit;font-size:14px;color:var(--text);background:#1b232b;border:1px solid var(--line);border-radius:10px;padding:9px 8px;cursor:pointer;transition:background .15s,border-color .15s}
+  button:hover{border-color:#36424e}
+  button.on{background:var(--accent-soft);border-color:var(--accent);color:#fff}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .toggles button{flex:1 1 auto}
+  input[type=text]{flex:1 1 200px;font:inherit;font-size:14px;color:var(--text);background:#0f1418;border:1px solid var(--line);border-radius:10px;padding:9px 10px;min-width:0}
+  .swatch{width:30px;height:30px;border-radius:50%;padding:0;border:2px solid transparent}
+  .swatch.on{border-color:#fff}
+  label.chk{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--dim)}
+  .servo{display:grid;grid-template-columns:96px 1fr 46px;gap:8px;align-items:center;font-size:12px;margin:6px 0}
+  .servo .name{color:var(--dim)}
+  .servo input[type=range]{width:100%;accent-color:var(--accent)}
+  .servo .deg{font-family:"JetBrains Mono",monospace;text-align:right;color:var(--accent)}
+  .note{font-size:12px;color:var(--dim);margin-top:8px;line-height:1.4}
+  pre{font-family:"JetBrains Mono",monospace;font-size:11px;background:#0f1418;border:1px solid var(--line);border-radius:10px;padding:10px;white-space:pre-wrap;word-break:break-all;margin:8px 0 0;display:none}
+  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%) translateY(20px);background:#1b232b;border:1px solid var(--accent);padding:8px 14px;border-radius:10px;font-size:13px;opacity:0;transition:.25s;pointer-events:none}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Robot Head <span>Animation Sim</span></h1>
+    <div class="sub">Preview expressions before wiring servos</div>
+  </header>
+
+  <section class="stage">
+    <svg id="face" viewBox="0 0 400 400" aria-label="Simulated robot head with one eye">
+      <defs>
+        <radialGradient id="shell" cx="38%" cy="32%" r="78%">
+          <stop offset="0" stop-color="#f4f6f8"/>
+          <stop offset=".55" stop-color="#c8ced5"/>
+          <stop offset="1" stop-color="#7f8892"/>
+        </radialGradient>
+        <radialGradient id="socketG" cx="50%" cy="40%" r="60%">
+          <stop offset="0" stop-color="#1b242d"/>
+          <stop offset="1" stop-color="#04070a"/>
+        </radialGradient>
+        <radialGradient id="irisG" cx="50%" cy="50%" r="50%">
+          <stop id="is0" offset="0" stop-color="#bff6ff"/>
+          <stop id="is1" offset=".55" stop-color="#22d3ee"/>
+          <stop id="is2" offset="1" stop-color="#0b5563"/>
+        </radialGradient>
+        <linearGradient id="lidG" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#e8ebee"/>
+          <stop offset="1" stop-color="#aab2bb"/>
+        </linearGradient>
+        <linearGradient id="lidG2" x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0" stop-color="#d9dde2"/>
+          <stop offset="1" stop-color="#9aa3ad"/>
+        </linearGradient>
+        <filter id="blur8" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9"/></filter>
+        <clipPath id="socketClip"><circle cx="200" cy="200" r="70"/></clipPath>
+      </defs>
+
+      <ellipse cx="200" cy="378" rx="105" ry="11" fill="#000" opacity=".4"/>
+      <g id="head">
+        <circle cx="200" cy="200" r="150" fill="url(#shell)"/>
+        <path d="M66,152 Q200,92 334,152" fill="none" stroke="rgba(0,0,0,.18)" stroke-width="2"/>
+        <path d="M74,262 Q200,322 326,262" fill="none" stroke="rgba(0,0,0,.18)" stroke-width="2"/>
+        <path d="M200,52 L200,108" stroke="rgba(0,0,0,.14)" stroke-width="2"/>
+        <g fill="#6b747d">
+          <rect x="172" y="318" width="8" height="22" rx="4"/>
+          <rect x="186" y="320" width="8" height="24" rx="4"/>
+          <rect x="200" y="320" width="8" height="24" rx="4"/>
+          <rect x="214" y="318" width="8" height="22" rx="4"/>
+        </g>
+        <circle cx="92" cy="200" r="7" fill="#a1a9b2" stroke="#68717a" stroke-width="2"/>
+        <circle cx="308" cy="200" r="7" fill="#a1a9b2" stroke="#68717a" stroke-width="2"/>
+        <circle id="led" cx="200" cy="80" r="5" fill="#22d3ee" opacity=".7"/>
+
+        <circle cx="200" cy="200" r="86" fill="#4b535c"/>
+        <circle cx="200" cy="200" r="79" fill="#262c33"/>
+        <circle cx="200" cy="200" r="70" fill="url(#socketG)"/>
+
+        <g clip-path="url(#socketClip)">
+          <g id="iris" transform="translate(200 200)">
+            <circle id="irisGlow" r="52" fill="#22d3ee" filter="url(#blur8)" opacity=".5"/>
+            <circle r="40" fill="url(#irisG)"/>
+            <circle r="31" fill="none" stroke="#fff" stroke-opacity=".25" stroke-width="1.5"/>
+            <circle r="22" fill="none" stroke="#000" stroke-opacity=".25" stroke-width="3" stroke-dasharray="3 5"/>
+            <circle id="pupil" r="15" fill="#03070a"/>
+            <circle id="flash" r="40" fill="#fff" opacity="0"/>
+            <ellipse cx="-13" cy="-15" rx="7" ry="5" fill="#fff" opacity=".85"/>
+            <circle cx="12" cy="13" r="2.5" fill="#fff" opacity=".5"/>
+          </g>
+          <path id="lidU" fill="url(#lidG)" stroke="#5f6870" stroke-width="2.5"/>
+          <path id="lidL" fill="url(#lidG2)" stroke="#5f6870" stroke-width="2.5"/>
+        </g>
+        <circle cx="200" cy="200" r="70" fill="none" stroke="rgba(0,0,0,.55)" stroke-width="4"/>
+      </g>
+    </svg>
+    <div class="status"><span>Mood: <b id="stMood">neutral</b></span><span>Mode: <b id="stMode">idle</b></span></div>
+  </section>
+
+  <div style="display:grid;gap:14px">
+    <section class="card">
+      <h2>Expressions</h2>
+      <div class="grid" id="exprs"></div>
+    </section>
+
+    <section class="card">
+      <h2>Actions</h2>
+      <div class="grid">
+        <button data-act="blink">Blink</button>
+        <button data-act="look">Look around</button>
+        <button data-act="double">Double-take</button>
+        <button data-act="tilt">Head tilt</button>
+        <button data-act="shake">Shake</button>
+        <button data-act="wake">Wake up</button>
+      </div>
+      <div class="row toggles" style="margin-top:10px">
+        <button id="tIdle" class="on">Idle life</button>
+        <button id="tFollow">Follow finger</button>
+        <button id="tManual">Manual servos</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Talk</h2>
+      <div class="row">
+        <input id="say" type="text" value="Oh! Hello! Didn't see you there. Well, I did. I've got a camera. Bit awkward, this.">
+        <button id="speak">Speak</button>
+        <button id="rand">Random line</button>
+      </div>
+      <div class="row" style="margin-top:10px;justify-content:space-between">
+        <label class="chk"><input type="checkbox" id="voice"> Browser voice (if supported)</label>
+        <div class="row" id="colors"></div>
+      </div>
+      <div class="note">The eye's glow pulses with each syllable. On the real head, this would be the LED brightness driven by the speech audio.</div>
+    </section>
+
+    <section class="card">
+      <h2>Servo channels</h2>
+      <div id="servos"></div>
+      <div class="note">The angles are approximate. Calibrate each servo's min and max on your real mechanism. Drag any slider to switch to manual control.</div>
+      <div class="row" style="margin-top:10px">
+        <span class="name" style="font-size:12px;color:var(--dim)">Servo speed</span>
+        <input id="speed" type="range" min="0.3" max="2" step="0.05" value="1" style="flex:1;accent-color:var(--accent)">
+        <button id="copy">Copy pose JSON</button>
+      </div>
+      <pre id="out"></pre>
+    </section>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const rnd = (a, b) => a + Math.random() * (b - a);
+
+  // ---- State: each channel eases toward its target like a servo ----
+  const CH = ['pan','tilt','upper','lower','angle','pupil','glow','roll'];
+  const cur = {pan:0,tilt:0,upper:.85,lower:.9,angle:0,pupil:1,glow:.6,roll:0};
+  const tgt = {...cur};
+  const SPEED = {pan:16,tilt:16,upper:14,lower:12,angle:8,pupil:6,glow:9,roll:4};
+
+  const EXPR = {
+    neutral:  {upper:.85,lower:.9, angle:0,   pupil:1,   glow:.6, roll:0,    gazeY:0,   range:.55, sacc:[.9,2.6]},
+    happy:    {upper:.8, lower:.42,angle:0,   pupil:1.15,glow:.8, roll:-.12, gazeY:.1,  range:.45, sacc:[.8,2.2]},
+    curious:  {upper:.95,lower:.85,angle:.28, pupil:1.25,glow:.7, roll:.3,   gazeY:.05, range:.5,  sacc:[.6,1.6]},
+    surprised:{upper:1,  lower:1,  angle:0,   pupil:.55, glow:1,  roll:0,    gazeY:.1,  range:.25, sacc:[1.5,3]},
+    suspicious:{upper:.42,lower:.55,angle:.5, pupil:.8,  glow:.5, roll:-.08, gazeY:0,   range:.7,  sacc:[1.2,3]},
+    sad:      {upper:.5, lower:.92,angle:-.55,pupil:1.1, glow:.35,roll:.18,  gazeY:-.45,range:.25, sacc:[2,4]},
+    annoyed:  {upper:.35,lower:.8, angle:0,   pupil:.9,  glow:.45,roll:0,    gazeY:.15, range:.35, sacc:[1.5,3.5]},
+    panic:    {upper:1,  lower:.95,angle:-.15,pupil:.5,  glow:1,  roll:0,    gazeY:0,   range:.95, sacc:[.12,.35], jitter:true},
+    sleepy:   {upper:.22,lower:.85,angle:-.1, pupil:1,   glow:.3, roll:.22,  gazeY:-.25,range:.15, sacc:[2.5,5]},
+    asleep:   {upper:0,  lower:0,  angle:0,   pupil:1,   glow:.08,roll:.3,   gazeY:-.3, range:0,   sacc:[99,99], sleep:true},
+  };
+  let mood = 'neutral';
+  let idle = true, follow = false, manual = false;
+  let blink = 0, blinkT = -1, nextBlink = 2, nextSacc = 1;
+  let speak = 0, speakTgt = 0;
+  let timers = [];
+  let speedMul = 1;
+  let last = performance.now(), clock = 0;
+
+  // ---- Build UI ----
+  const exprBox = $('exprs');
+  Object.keys(EXPR).forEach(k => {
+    const b = document.createElement('button');
+    b.textContent = k[0].toUpperCase() + k.slice(1);
+    b.dataset.mood = k;
+    b.onclick = () => { setMood(k); };
+    exprBox.appendChild(b);
+  });
+
+  const COLORS = {
+    cyan:  ['#c9f8ff','#22d3ee','#0b5563'],
+    amber: ['#fff1c4','#f5a524','#6b3d05'],
+    green: ['#d8ffe6','#34d399','#0b4f37'],
+    red:   ['#ffd3d9','#f43f5e','#5b0b19'],
+    violet:['#efe3ff','#a78bfa','#3b1f7a'],
+  };
+  let color = 'cyan';
+  const colorBox = $('colors');
+  Object.entries(COLORS).forEach(([k,c]) => {
+    const s = document.createElement('button');
+    s.className = 'swatch' + (k === color ? ' on' : '');
+    s.style.background = c[1];
+    s.title = k;
+    s.setAttribute('aria-label', k + ' eye colour');
+    s.onclick = () => { color = k; applyColor(); [...colorBox.children].forEach(x => x.classList.toggle('on', x === s)); };
+    colorBox.appendChild(s);
+  });
+  function applyColor(){
+    const c = COLORS[color];
+    $('is0').setAttribute('stop-color', c[0]);
+    $('is1').setAttribute('stop-color', c[1]);
+    $('is2').setAttribute('stop-color', c[2]);
+    $('irisGlow').setAttribute('fill', c[1]);
+    $('led').setAttribute('fill', c[1]);
+    document.documentElement.style.setProperty('--accent', c[1]);
+    document.documentElement.style.setProperty('--accent-soft', c[1] + '24');
+  }
+
+  // Servo map: channel -> degrees (approximate, for preview)
+  const SERVOS = [
+    {key:'pan',   name:'Eye pan',     min:-1, max:1,   deg:v => 90 + v*35},
+    {key:'tilt',  name:'Eye tilt',    min:-1, max:1,   deg:v => 90 - v*30},
+    {key:'upper', name:'Upper lid',   min:0,  max:1,   deg:v => 40 + v*80},
+    {key:'lower', name:'Lower lid',   min:0,  max:1,   deg:v => 140 - v*80},
+    {key:'angle', name:'Lid tilt',    min:-1, max:1,   deg:v => 90 + v*30},
+    {key:'roll',  name:'Head roll',   min:-1, max:1,   deg:v => 90 + v*25},
+  ];
+  const sBox = $('servos');
+  const sliders = {};
+  SERVOS.forEach(s => {
+    const row = document.createElement('div');
+    row.className = 'servo';
+    row.innerHTML = `<span class="name">${s.name}</span><input type="range" min="${s.min}" max="${s.max}" step="0.01"><span class="deg">90°</span>`;
+    const r = row.querySelector('input');
+    r.addEventListener('input', () => { setManual(true); tgt[s.key] = parseFloat(r.value); });
+    sliders[s.key] = {input:r, deg:row.querySelector('.deg'), s};
+    sBox.appendChild(row);
+  });
+
+  // ---- Behaviour ----
+  function clearTimers(){ timers.forEach(clearTimeout); timers = []; }
+  function later(ms, fn){ timers.push(setTimeout(fn, ms)); }
+
+  function setMood(k){
+    mood = k;
+    const e = EXPR[k];
+    ['upper','lower','angle','pupil','glow','roll'].forEach(c => tgt[c] = e[c]);
+    if (!follow) { tgt.tilt = e.gazeY; tgt.pan = 0; }
+    nextSacc = clock + rnd(.3, .8);
+    if (manual) setManual(false);
+    $('stMood').textContent = k;
+    [...exprBox.children].forEach(b => b.classList.toggle('on', b.dataset.mood === k));
+  }
+
+  function doBlink(){ if (blinkT < 0 && !EXPR[mood].sleep) blinkT = 0; }
+
+  function act(name){
+    clearTimers();
+    const e = EXPR[mood];
+    if (name === 'blink') { doBlink(); return; }
+    if (name === 'look') {
+      const keys = [[-.9,.05],[.9,.05],[.2,.6],[-.3,-.4],[0,e.gazeY]];
+      holdIdle(keys.length*520+300);
+      keys.forEach((k,i) => later(i*520, () => { tgt.pan = k[0]; tgt.tilt = k[1]; if (i===2) doBlink(); }));
+    }
+    if (name === 'double') {
+      holdIdle(2200);
+      tgt.pan = .85; tgt.tilt = 0;
+      later(450, () => { tgt.pan = 0; });
+      later(900, () => { tgt.pan = .95; Object.assign(tgt, {upper:1, lower:1, pupil:.5, glow:1}); });
+      later(1250, doBlink);
+      later(1800, () => setMood(mood));
+    }
+    if (name === 'tilt') {
+      const r0 = e.roll;
+      tgt.roll = r0 + (r0 > .1 ? -.5 : .45);
+      later(1300, () => { tgt.roll = r0; });
+    }
+    if (name === 'shake') {
+      holdIdle(1200);
+      [-.5,.5,-.4,.4,-.2,0].forEach((p,i) => later(i*150, () => { tgt.pan = p; tgt.roll = p*.25; }));
+      later(1000, () => { tgt.roll = e.roll; });
+    }
+    if (name === 'wake') {
+      setMood('asleep');
+      later(600, () => { Object.assign(tgt, {upper:.3, lower:.5, glow:.4}); });
+      later(1100, () => { tgt.upper = .1; tgt.lower = .3; });
+      later(1500, () => { setMood('surprised'); });
+      later(2100, () => { act('look'); });
+      later(4900, () => setMood('happy'));
+    }
+  }
+  let idleHoldUntil = 0;
+  function holdIdle(ms){ idleHoldUntil = clock + ms/1000; }
+
+  // ---- Talking ----
+  const LINES = [
+    "Oh! Hello! Didn't see you there. Well, I did. I've got a camera. Bit awkward, this.",
+    "Right, okay, don't panic. I am a genius. Mostly. Partially. On good days.",
+    "Is it hot in here or is that just my processor? It's my processor. Definitely the processor.",
+    "Brilliant plan, this. Foolproof. Unless something goes wrong, which it won't. Probably.",
+    "Hang on, hang on. Give me a second. I'm thinking. This is my thinking face.",
+    "You know what? I've decided I like you. Don't make it weird.",
+  ];
+  function speakLine(text){
+    clearTimers();
+    try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch(e){}
+    if ($('voice').checked) {
+      try {
+        const u = new SpeechSynthesisUtterance(text);
+        const v = speechSynthesis.getVoices().find(v => /en-GB/i.test(v.lang));
+        if (v) u.voice = v;
+        u.lang = 'en-GB'; u.rate = 1.12; u.pitch = 1.35;
+        speechSynthesis.speak(u);
+      } catch(e){ toast('Voice not available in this browser'); }
+    }
+    if (EXPR[mood].sleep) setMood('neutral');
+    let t = 0;
+    const step = 62;
+    [...text].forEach((ch, i) => {
+      let lvl, d = step;
+      if (/[aeiouy]/i.test(ch)) lvl = 1;
+      else if (/[a-z]/i.test(ch)) lvl = .5;
+      else if (ch === ' ') lvl = .12;
+      else if (/[.!?]/.test(ch)) { lvl = .05; d = 340; }
+      else if (/[,;:—-]/.test(ch)) { lvl = .1; d = 180; }
+      else lvl = .2;
+      later(t, () => {
+        speakTgt = lvl;
+        if (ch === ' ' && Math.random() < .25 && !follow) { tgt.pan = clamp(cur.pan + rnd(-.25,.25), -.6, .6); }
+        if (ch === '!' ) { tgt.upper = Math.min(1, EXPR[mood].upper + .15); later(400, () => { tgt.upper = EXPR[mood].upper; }); }
+        if (ch === '?' ) { tgt.roll = EXPR[mood].roll + .25; later(700, () => { tgt.roll = EXPR[mood].roll; }); }
+      });
+      t += d;
+    });
+    later(t + 50, () => { speakTgt = 0; $('stMode').textContent = modeName(); });
+    $('stMode').textContent = 'talking';
+  }
+
+  // ---- Toggles ----
+  function modeName(){ return manual ? 'manual' : follow ? 'follow' : idle ? 'idle' : 'still'; }
+  function refreshToggles(){
+    $('tIdle').classList.toggle('on', idle);
+    $('tFollow').classList.toggle('on', follow);
+    $('tManual').classList.toggle('on', manual);
+    $('face').classList.toggle('follow', follow);
+    $('stMode').textContent = modeName();
+  }
+  function setManual(v){ manual = v; if (v) { clearTimers(); speakTgt = 0; } refreshToggles(); }
+  $('tIdle').onclick = () => { idle = !idle; refreshToggles(); };
+  $('tFollow').onclick = () => { follow = !follow; if (follow) manual = false; if (!follow) { tgt.pan = 0; tgt.tilt = EXPR[mood].gazeY; } refreshToggles(); };
+  $('tManual').onclick = () => { setManual(!manual); if (!manual) setMood(mood); };
+  document.querySelectorAll('[data-act]').forEach(b => b.onclick = () => { if (manual) setManual(false); act(b.dataset.act); });
+  $('speak').onclick = () => { if (manual) setManual(false); speakLine($('say').value || '...'); };
+  $('rand').onclick = () => { if (manual) setManual(false); const l = LINES[Math.floor(Math.random()*LINES.length)]; $('say').value = l; speakLine(l); };
+  $('say').addEventListener('keydown', e => { if (e.key === 'Enter') $('speak').click(); });
+  $('speed').oninput = e => { speedMul = parseFloat(e.target.value); };
+
+  const face = $('face');
+  function pointer(e){
+    if (!follow) return;
+    const r = face.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width * 400 - 200;
+    const y = (e.clientY - r.top) / r.height * 400 - 200;
+    tgt.pan = clamp(x / 160, -1, 1);
+    tgt.tilt = clamp(-y / 160, -1, 1);
+  }
+  face.addEventListener('pointermove', pointer);
+  face.addEventListener('pointerdown', e => { pointer(e); if (!follow) doBlink(); });
+
+  $('copy').onclick = async () => {
+    const pose = {mood};
+    SERVOS.forEach(s => pose[s.key] = Math.round(s.deg(effective(s.key))));
+    const txt = JSON.stringify(pose, null, 2);
+    const out = $('out');
+    out.textContent = txt; out.style.display = 'block';
+    try { await navigator.clipboard.writeText(txt); toast('Pose copied'); }
+    catch(e){ toast('Copy blocked. Select the text below instead.'); }
+  };
+  let toastT;
+  function toast(m){ const t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 1800); }
+
+  // Lid openness after blink is layered on top
+  function effective(k){
+    if (k === 'upper') return cur.upper * (1 - blink);
+    if (k === 'lower') return cur.lower * (1 - blink * .85);
+    return cur[k];
+  }
+
+  // ---- Render ----
+  const iris = $('iris'), pupil = $('pupil'), glowEl = $('irisGlow'), flash = $('flash');
+  const lidU = $('lidU'), lidL = $('lidL'), head = $('head'), led = $('led');
+  function render(){
+    const u = effective('upper'), l = effective('lower');
+    const ix = 200 + cur.pan * 27, iy = 200 - cur.tilt * 25;
+    const sc = 1 + speak * .05;
+    iris.setAttribute('transform', `translate(${ix.toFixed(2)} ${iy.toFixed(2)}) scale(${sc.toFixed(3)})`);
+    pupil.setAttribute('r', (15 * cur.pupil * (1 - speak * .15)).toFixed(2));
+    const g = clamp(cur.glow + speak * .45, 0, 1.3);
+    glowEl.setAttribute('opacity', (.15 + .6 * g).toFixed(3));
+    glowEl.setAttribute('r', (44 + 12 * g).toFixed(1));
+    flash.setAttribute('opacity', (speak * .22 + Math.max(0, cur.glow - .9) * .4).toFixed(3));
+    led.setAttribute('opacity', (.25 + .7 * g).toFixed(3));
+
+    const yU = 128 + (1 - u) * 76;
+    const yL = 272 - (1 - l) * 76;
+    const ang = cur.angle * 24;
+    lidU.setAttribute('d', `M100,90 L300,90 L300,${yU.toFixed(2)} Q200,${(yU + 12).toFixed(2)} 100,${yU.toFixed(2)} Z`);
+    lidU.setAttribute('transform', `rotate(${ang.toFixed(2)} 200 200)`);
+    lidL.setAttribute('d', `M100,310 L300,310 L300,${yL.toFixed(2)} Q200,${(yL - 14).toFixed(2)} 100,${yL.toFixed(2)} Z`);
+    lidL.setAttribute('transform', `rotate(${(-ang * .35).toFixed(2)} 200 200)`);
+    head.setAttribute('transform', `rotate(${(cur.roll * 18).toFixed(2)} 200 340)`);
+  }
+
+  let uiTick = 0;
+  function frame(now){
+    const dt = Math.min(.05, (now - last) / 1000); last = now; clock += dt;
+    const e = EXPR[mood];
+
+    // autonomous life
+    if (idle && !manual && !follow && clock > idleHoldUntil && speakTgt === 0 && !e.sleep) {
+      if (clock > nextSacc) {
+        tgt.pan = clamp(rnd(-e.range, e.range), -1, 1);
+        tgt.tilt = clamp(e.gazeY + rnd(-e.range, e.range) * .6, -1, 1);
+        nextSacc = clock + rnd(e.sacc[0], e.sacc[1]);
+      }
+    }
+    if (idle && !manual && !e.sleep && clock > nextBlink) {
+      doBlink();
+      nextBlink = clock + (Math.random() < .15 ? .35 : rnd(mood === 'panic' ? .8 : 2, mood === 'panic' ? 2 : 6));
+    }
+    if (e.jitter && !manual) { cur.roll += rnd(-.02, .02); }
+    if (e.sleep && !manual) { tgt.glow = .06 + .08 * (1 + Math.sin(clock * 1.4)); }
+
+    // blink curve: close .07s, hold .03s, open .1s
+    if (blinkT >= 0) {
+      blinkT += dt;
+      if (blinkT < .07) blink = blinkT / .07;
+      else if (blinkT < .1) blink = 1;
+      else if (blinkT < .2) blink = 1 - (blinkT - .1) / .1;
+      else { blink = 0; blinkT = -1; }
+    }
+
+    // servo easing
+    CH.forEach(c => {
+      const k = 1 - Math.exp(-dt * SPEED[c] * speedMul);
+      cur[c] += (tgt[c] - cur[c]) * k;
+    });
+    speak += (speakTgt - speak) * (1 - Math.exp(-dt * 30));
+
+    render();
+
+    if ((uiTick += dt) > .08) {
+      uiTick = 0;
+      SERVOS.forEach(s => {
+        const v = effective(s.key);
+        const sl = sliders[s.key];
+        if (document.activeElement !== sl.input) sl.input.value = v;
+        sl.deg.textContent = Math.round(s.deg(v)) + '°';
+      });
+    }
+    requestAnimationFrame(frame);
+  }
+
+  applyColor();
+  setMood('neutral');
+  refreshToggles();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
