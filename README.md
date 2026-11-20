@@ -10,11 +10,12 @@ An AI that lives inside a robot head: a Wheatley-style personality that talks, l
 
 ## Folders
 
-- `sim/`: browser simulator for previewing the head's expressions and servo poses. Open `sim/index.html` in any browser.
+- `sim/`: browser simulator for previewing the head's expressions and servo poses. Live at https://dmodgg.github.io/AI-Head-Project/sim/
+- `eye-mech/`: Will Cogley's EyeMech ε3.2 print files, assembly guide, controller board files and code (see its README for the license)
 - `pc-server/`: AI server for the PC (coming soon)
 - `pi-client/`: Raspberry Pi client (coming soon)
 - `eye-board/`: command-mode firmware for the EyeMech board (coming soon)
 
 ## Credits
 
-The eye mechanism and controller board are by [Will Cogley](https://www.willcogley.com), licensed CC BY-NC-SA 4.0. His design files are not included in this repo.
+The eye mechanism and controller board are by [Will Cogley](https://www.willcogley.com), licensed [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/). His files are in `eye-mech/`, shared non-commercially with credit under the same license.
